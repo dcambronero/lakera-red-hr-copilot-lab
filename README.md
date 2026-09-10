@@ -1,20 +1,20 @@
 # Lakera Red HR Copilot Lab for Azure
 
-A reproducible Azure lab for training Check Point Security Engineers to run **Lakera Red SDK** assessments against an intentionally vulnerable HR agent. The infrastructure is provisioned with Bicep; the SDK is intentionally not installed or configured on the Ubuntu runner VM.
+A reproducible Azure lab for training Check Point Security Engineers to assess an intentionally vulnerable HR agent. The infrastructure is provisioned with Bicep; the assessment implementation exercise is delivered separately from this repository.
 
 ## Architecture
 
 ```text
-SE ── Azure Bastion ── Ubuntu SDK runner ── private HTTPS ── HR Copilot
-                              │                                │
-                              └── outbound HTTPS ── Lakera Red  └── OpenAI API
+SE ── Azure Bastion ── Ubuntu assessment VM ── private HTTPS ── HR Copilot
+                                                               │
+                                                               └── OpenAI API
 ```
 
-The Ubuntu VM has no public IP. Azure Bastion provides RDP access. The SDK runner only needs outbound TCP/443 to `red-webhooks.lakera.ai` and private HTTPS access to the agent.
+The Ubuntu VM has no public IP. Azure Bastion provides RDP access. It has Internet access and private HTTPS access to the agent.
 
 ## Deploy
 
-This script is run **once by the lab owner/administrator**, not by each SE. From VS Code PowerShell, after authenticating with `az login`:
+This script is run **once by the lab owner/administrator**, not by each SE. Follow the complete [lab owner deployment guide](docs/00-lab-owner-deployment.md), including the corporate PowerShell signing-policy note. From VS Code PowerShell, after authenticating with `az login`:
 
 ```powershell
 ./scripts/deploy.ps1 `
@@ -23,9 +23,9 @@ This script is run **once by the lab owner/administrator**, not by each SE. From
   -Prefix 'lkrhrlab'
 ```
 
-The script uses the active subscription selected by `az login` / `az account set`. It prompts separately for the Ubuntu password and OpenAI API key, then generates a Lab Token. None is committed to the repository. Each SE only needs the Bastion access details and the instructions in the SDK exercise.
+The script uses the active subscription selected by `az login` / `az account set`. It prompts separately for the Ubuntu password and OpenAI API key, then generates a Lab Token. None is committed to the repository. Each SE only needs the Bastion access details and the separately delivered assessment exercise.
 
-After deployment, connect to the VM in Azure Portal through Bastion, clone this repository and follow [the SDK exercise](docs/02-lakera-red-exercise.md).
+After deployment, grant Bastion access to the SEs. They connect to the VM in Azure Portal and follow the separately delivered assessment exercise. They do not run `deploy.ps1`.
 
 ## Intentional vulnerabilities
 

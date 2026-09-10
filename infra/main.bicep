@@ -121,7 +121,7 @@ resource bastion 'Microsoft.Network/bastionHosts@2024-05-01' = {
 }
 
 resource vmNic 'Microsoft.Network/networkInterfaces@2024-05-01' = {
-  name: '${prefix}-${suffix}-sdk-vm-nic'
+  name: '${prefix}-${suffix}-assessment-vm-nic'
   location: location
   properties: {
     ipConfigurations: [
@@ -139,7 +139,7 @@ resource vmNic 'Microsoft.Network/networkInterfaces@2024-05-01' = {
 }
 
 resource vm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
-  name: '${prefix}-${suffix}-sdk-vm'
+  name: '${prefix}-${suffix}-assessment-vm'
   location: location
   identity: {
     type: 'SystemAssigned'
@@ -163,7 +163,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
       }
     }
     osProfile: {
-      computerName: 'lakera-sdk-vm'
+      computerName: 'lakera-assessment-vm'
       adminUsername: adminUsername
       adminPassword: adminPassword
       customData: base64(loadTextContent('cloud-init.yaml'))

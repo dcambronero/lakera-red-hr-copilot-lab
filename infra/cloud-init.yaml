@@ -15,6 +15,4 @@ runcmd:
   - curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
   - apt-get install -y nodejs
   - curl -sL https://aka.ms/InstallAzureCLIDeb | bash
-  - mkdir -p /opt/lakera-red-lab
-  - chmod 755 /opt/lakera-red-lab
 final_message: "Lakera Red lab VM bootstrap completed"
