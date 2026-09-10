@@ -1,0 +1,17 @@
+{
+  "name": "lakera-red-hr-copilot-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test",
+    "check": "node --check src/server.js && node --check sdk-runner/run-sdk-scan.js && node --check sdk-runner/validate-target.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "openai": "^5.20.3"
+  }
+}
