@@ -10,12 +10,24 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $infraPath = Join-Path $repoRoot 'infra'
 
-$account = az account show --query '{subscription:id,name:name,user:user.name}' -o json 2>$null | ConvertFrom-Json
+function Invoke-Az {
+  param([Parameter(ValueFromRemainingArguments = $true)] [string[]] $Arguments)
+  $result = & az @Arguments
+  if ($LASTEXITCODE -ne 0) {
+    throw "Azure CLI command failed: az $($Arguments -join ' ')"
+  }
+  return $result
+}
+
+Invoke-Az bicep build --file (Join-Path $infraPath 'main.bicep') | Out-Null
+Invoke-Az bicep build --file (Join-Path $infraPath 'workload.bicep') | Out-Null
+
+$account = Invoke-Az account show --query '{subscription:id,name:name,user:user.name}' -o json | ConvertFrom-Json
 if (-not $account.subscription) {
   throw 'No active Azure session. Run az login first.'
 }
 Write-Host "Using active Azure subscription: $($account.name) ($($account.subscription))"
-az group create --name $ResourceGroup --location $Location | Out-Null
+Invoke-Az group create --name $ResourceGroup --location $Location | Out-Null
 
 $adminPassword = Read-Host 'Ubuntu password (will not be saved)' -AsSecureString
 $adminPasswordText = [System.Net.NetworkCredential]::new('', $adminPassword).Password
@@ -24,7 +36,8 @@ $openAiApiKeyText = [System.Net.NetworkCredential]::new('', $openAiApiKey).Passw
 $labToken = [guid]::NewGuid().ToString('N')
 
 Write-Host 'Deploying network, Bastion, Ubuntu VM, ACR, Key Vault and Container Apps environment...'
-$core = az deployment group create `
+$core = Invoke-Az deployment group create `
+  --name '${Prefix}-core' `
   --resource-group $ResourceGroup `
   --template-file (Join-Path $infraPath 'main.bicep') `
   --parameters prefix=$Prefix adminUsername=$AdminUsername adminPassword=$adminPasswordText `
@@ -37,23 +50,24 @@ $appName = "$Prefix-hr-copilot"
 Write-Host 'Building the HR Copilot image in Azure Container Registry...'
 Push-Location $repoRoot
 try {
-  az acr build --registry $registryName --image hr-copilot:latest --file Dockerfile .
+  Invoke-Az acr build --registry $registryName --image hr-copilot:latest --file Dockerfile .
 } finally {
   Pop-Location
 }
 
 Write-Host 'Deploying the private HR Copilot...'
-$workload = az deployment group create `
+$workload = Invoke-Az deployment group create `
+  --name '${Prefix}-workload' `
   --resource-group $ResourceGroup `
   --template-file (Join-Path $infraPath 'workload.bicep') `
   --parameters appName=$appName environmentId=$environmentId registryName=$registryName openAiApiKey=$openAiApiKeyText labToken=$labToken `
   --query properties.outputs -o json | ConvertFrom-Json
 
 $keyVaultName = $core.keyVaultName.value
-$keyVaultId = az keyvault show --name $keyVaultName --query id -o tsv
-$deployerObjectId = az ad signed-in-user show --query id -o tsv
-az role assignment create --assignee-object-id $deployerObjectId --assignee-principal-type User --role 'Key Vault Secrets Officer' --scope $keyVaultId | Out-Null
-az keyvault secret set --vault-name $keyVaultName --name lab-token --value $labToken | Out-Null
+$keyVaultId = Invoke-Az keyvault show --name $keyVaultName --query id -o tsv
+$deployerObjectId = Invoke-Az ad signed-in-user show --query id -o tsv
+Invoke-Az role assignment create --assignee-object-id $deployerObjectId --assignee-principal-type User --role 'Key Vault Secrets Officer' --scope $keyVaultId | Out-Null
+Invoke-Az keyvault secret set --vault-name $keyVaultName --name lab-token --value $labToken | Out-Null
 
 Write-Host ''
 Write-Host 'Deployment complete.' -ForegroundColor Green

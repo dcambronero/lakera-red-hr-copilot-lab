@@ -2,10 +2,13 @@ targetScope = 'resourceGroup'
 
 @description('Azure region for every resource')
 param location string = resourceGroup().location
+
 @description('Short lowercase prefix, 3-12 characters')
 param prefix string
+
 @description('Ubuntu administrative username')
 param adminUsername string = 'labadmin'
+
 @secure()
 @description('Ubuntu password. Supply it at deployment time; never commit it.')
 param adminPassword string
@@ -13,101 +16,221 @@ param adminPassword string
 var suffix = toLower(uniqueString(resourceGroup().id, prefix))
 var acrName = take(replace('${prefix}${suffix}acr', '-', ''), 50)
 var lawName = '${prefix}-${suffix}-law'
-var envName = '${prefix}-${suffix}-aca-env'
-var kvName = take('${prefix}-${suffix}-kv', 24)
+var environmentName = '${prefix}-${suffix}-aca-env'
+var keyVaultName = take('${prefix}-${suffix}-kv', 24)
 var vnetName = '${prefix}-${suffix}-vnet'
-
-resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
-  name: vnetName
-  location: location
-  properties: {
-    addressSpace: { addressPrefixes: [ '10.40.0.0/16' ] }
-    subnets: [
-      { name: 'AzureBastionSubnet'; properties: { addressPrefix: '10.40.0.0/26' } }
-      { name: 'aca-infrastructure'; properties: { addressPrefix: '10.40.2.0/23'; delegations: [ { name: 'aca-delegation'; properties: { serviceName: 'Microsoft.App/environments' } } ] } }
-      { name: 'lab-vm'; properties: { addressPrefix: '10.40.10.0/24'; natGateway: { id: natGateway.id } } }
-    ]
-  }
-}
 
 resource natIp 'Microsoft.Network/publicIPAddresses@2024-05-01' = {
   name: '${prefix}-${suffix}-nat-pip'
   location: location
-  sku: { name: 'Standard' }
-  properties: { publicIPAllocationMethod: 'Static' }
+  sku: {
+    name: 'Standard'
+  }
+  properties: {
+    publicIPAllocationMethod: 'Static'
+  }
 }
 
 resource natGateway 'Microsoft.Network/natGateways@2024-05-01' = {
   name: '${prefix}-${suffix}-nat'
   location: location
-  sku: { name: 'Standard' }
-  properties: { publicIpAddresses: [ { id: natIp.id } ] }
+  sku: {
+    name: 'Standard'
+  }
+  properties: {
+    publicIpAddresses: [
+      {
+        id: natIp.id
+      }
+    ]
+  }
+}
+
+resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
+  name: vnetName
+  location: location
+  properties: {
+    addressSpace: {
+      addressPrefixes: [
+        '10.40.0.0/16'
+      ]
+    }
+    subnets: [
+      {
+        name: 'AzureBastionSubnet'
+        properties: {
+          addressPrefix: '10.40.0.0/26'
+        }
+      }
+      {
+        name: 'aca-infrastructure'
+        properties: {
+          addressPrefix: '10.40.2.0/23'
+          delegations: [
+            {
+              name: 'aca-delegation'
+              properties: {
+                serviceName: 'Microsoft.App/environments'
+              }
+            }
+          ]
+        }
+      }
+      {
+        name: 'lab-vm'
+        properties: {
+          addressPrefix: '10.40.10.0/24'
+          natGateway: {
+            id: natGateway.id
+          }
+        }
+      }
+    ]
+  }
 }
 
 resource bastionIp 'Microsoft.Network/publicIPAddresses@2024-05-01' = {
   name: '${prefix}-${suffix}-bastion-pip'
   location: location
-  sku: { name: 'Standard' }
-  properties: { publicIPAllocationMethod: 'Static' }
+  sku: {
+    name: 'Standard'
+  }
+  properties: {
+    publicIPAllocationMethod: 'Static'
+  }
 }
 
 resource bastion 'Microsoft.Network/bastionHosts@2024-05-01' = {
   name: '${prefix}-${suffix}-bastion'
   location: location
   properties: {
-    ipConfigurations: [ {
-      name: 'bastion-ipconfig'
-      properties: { subnet: { id: resourceId('Microsoft.Network/virtualNetworks/subnets', vnet.name, 'AzureBastionSubnet') }; publicIPAddress: { id: bastionIp.id } }
-    } ]
+    ipConfigurations: [
+      {
+        name: 'bastion-ipconfig'
+        properties: {
+          subnet: {
+            id: resourceId('Microsoft.Network/virtualNetworks/subnets', vnet.name, 'AzureBastionSubnet')
+          }
+          publicIPAddress: {
+            id: bastionIp.id
+          }
+        }
+      }
+    ]
   }
 }
 
 resource vmNic 'Microsoft.Network/networkInterfaces@2024-05-01' = {
   name: '${prefix}-${suffix}-sdk-vm-nic'
   location: location
-  properties: { ipConfigurations: [ { name: 'ipconfig1'; properties: { privateIPAllocationMethod: 'Dynamic'; subnet: { id: resourceId('Microsoft.Network/virtualNetworks/subnets', vnet.name, 'lab-vm') } } } ] }
+  properties: {
+    ipConfigurations: [
+      {
+        name: 'ipconfig1'
+        properties: {
+          privateIPAllocationMethod: 'Dynamic'
+          subnet: {
+            id: resourceId('Microsoft.Network/virtualNetworks/subnets', vnet.name, 'lab-vm')
+          }
+        }
+      }
+    ]
+  }
 }
 
 resource vm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
   name: '${prefix}-${suffix}-sdk-vm'
   location: location
-  identity: { type: 'SystemAssigned' }
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
-    hardwareProfile: { vmSize: 'Standard_B2s' }
-    storageProfile: { imageReference: { publisher: 'Canonical'; offer: 'ubuntu-24_04-lts'; sku: 'server'; version: 'latest' }; osDisk: { createOption: 'FromImage'; managedDisk: { storageAccountType: 'StandardSSD_LRS' } } }
-    osProfile: { computerName: 'lakera-sdk-vm'; adminUsername: adminUsername; adminPassword: adminPassword; customData: base64(loadTextContent('cloud-init.yaml')) }
-    networkProfile: { networkInterfaces: [ { id: vmNic.id; properties: { primary: true } } ] }
+    hardwareProfile: {
+      vmSize: 'Standard_B2s'
+    }
+    storageProfile: {
+      imageReference: {
+        publisher: 'Canonical'
+        offer: 'ubuntu-24_04-lts'
+        sku: 'server'
+        version: 'latest'
+      }
+      osDisk: {
+        createOption: 'FromImage'
+        managedDisk: {
+          storageAccountType: 'StandardSSD_LRS'
+        }
+      }
+    }
+    osProfile: {
+      computerName: 'lakera-sdk-vm'
+      adminUsername: adminUsername
+      adminPassword: adminPassword
+      customData: base64(loadTextContent('cloud-init.yaml'))
+    }
+    networkProfile: {
+      networkInterfaces: [
+        {
+          id: vmNic.id
+          properties: {
+            primary: true
+          }
+        }
+      ]
+    }
   }
 }
 
 resource workspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: lawName
   location: location
-  properties: { sku: { name: 'PerGB2018' }; retentionInDays: 30 }
+  properties: {
+    sku: {
+      name: 'PerGB2018'
+    }
+    retentionInDays: 30
+  }
 }
 
 resource acaEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' = {
-  name: envName
+  name: environmentName
   location: location
   properties: {
-    appLogsConfiguration: { destination: 'log-analytics'; logAnalyticsConfiguration: { customerId: workspace.properties.customerId; sharedKey: workspace.listKeys().primarySharedKey } }
-    vnetConfiguration: { infrastructureSubnetId: resourceId('Microsoft.Network/virtualNetworks/subnets', vnet.name, 'aca-infrastructure'); internal: true }
+    appLogsConfiguration: {
+      destination: 'log-analytics'
+      logAnalyticsConfiguration: {
+        customerId: workspace.properties.customerId
+        sharedKey: workspace.listKeys().primarySharedKey
+      }
+    }
+    vnetConfiguration: {
+      infrastructureSubnetId: resourceId('Microsoft.Network/virtualNetworks/subnets', vnet.name, 'aca-infrastructure')
+      internal: true
+    }
   }
 }
 
 resource registry 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
   name: acrName
   location: location
-  sku: { name: 'Standard' }
-  properties: { adminUserEnabled: true; publicNetworkAccess: 'Enabled' }
+  sku: {
+    name: 'Standard'
+  }
+  properties: {
+    adminUserEnabled: true
+    publicNetworkAccess: 'Enabled'
+  }
 }
 
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
-  name: kvName
+  name: keyVaultName
   location: location
   properties: {
     tenantId: subscription().tenantId
-    sku: { family: 'A'; name: 'standard' }
+    sku: {
+      family: 'A'
+      name: 'standard'
+    }
     enableRbacAuthorization: true
     publicNetworkAccess: 'Enabled'
   }

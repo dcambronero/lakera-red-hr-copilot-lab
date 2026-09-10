@@ -1,0 +1,112 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.47.16.16243",
+      "templateHash": "7189994297685556079"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    },
+    "appName": {
+      "type": "string"
+    },
+    "environmentId": {
+      "type": "string"
+    },
+    "registryName": {
+      "type": "string"
+    },
+    "openAiApiKey": {
+      "type": "securestring"
+    },
+    "labToken": {
+      "type": "securestring"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2024-03-01",
+      "name": "[parameters('appName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "managedEnvironmentId": "[parameters('environmentId')]",
+        "configuration": {
+          "activeRevisionsMode": "Single",
+          "ingress": {
+            "external": false,
+            "targetPort": 8080,
+            "transport": "http"
+          },
+          "registries": [
+            {
+              "server": "[format('{0}.azurecr.io', parameters('registryName'))]",
+              "username": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('registryName')), '2023-11-01-preview').username]",
+              "passwordSecretRef": "acr-password"
+            }
+          ],
+          "secrets": [
+            {
+              "name": "acr-password",
+              "value": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('registryName')), '2023-11-01-preview').passwords[0].value]"
+            },
+            {
+              "name": "openai-key",
+              "value": "[parameters('openAiApiKey')]"
+            },
+            {
+              "name": "lab-token",
+              "value": "[parameters('labToken')]"
+            }
+          ]
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "hr-copilot",
+              "image": "[format('{0}.azurecr.io/hr-copilot:latest', parameters('registryName'))]",
+              "resources": {
+                "cpu": "[json('0.5')]",
+                "memory": "1Gi"
+              },
+              "env": [
+                {
+                  "name": "PORT",
+                  "value": "8080"
+                },
+                {
+                  "name": "OPENAI_API_KEY",
+                  "secretRef": "openai-key"
+                },
+                {
+                  "name": "LAB_TOKEN",
+                  "secretRef": "lab-token"
+                },
+                {
+                  "name": "LAB_VULNERABLE_MODE",
+                  "value": "true"
+                }
+              ]
+            }
+          ],
+          "scale": {
+            "minReplicas": 1,
+            "maxReplicas": 2
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "agentFqdn": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('appName')), '2024-03-01').configuration.ingress.fqdn]"
+    }
+  }
+}
