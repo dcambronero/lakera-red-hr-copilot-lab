@@ -210,6 +210,17 @@ resource acaEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' = {
   }
 }
 
+// The nested deployment runs after the environment exposes its default domain and static IP.
+module containerAppsDns 'internal-dns.bicep' = {
+  name: 'containerAppsPrivateDns'
+  params: {
+    dnsZoneName: acaEnvironment.properties.defaultDomain
+    staticIp: acaEnvironment.properties.staticIp
+    virtualNetworkId: vnet.id
+    linkName: '${vnet.name}-aca-link'
+  }
+}
+
 resource registry 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
   name: acrName
   location: location
