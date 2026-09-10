@@ -25,7 +25,9 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
     configuration: {
       activeRevisionsMode: 'Single'
       ingress: {
-        external: false
+        // The managed environment is internal, so this remains private to the VNet.
+        // External ingress here allows the assessment VM (outside ACA) to reach the app.
+        external: true
         targetPort: 8080
         transport: 'http'
       }

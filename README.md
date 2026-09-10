@@ -10,7 +10,7 @@ SE ── Azure Bastion ── Ubuntu assessment VM ── private HTTPS ── 
                                                                └── OpenAI API
 ```
 
-The Ubuntu VM has no public IP. Azure Bastion provides RDP access. It has Internet access and private HTTPS access to the agent.
+The Ubuntu VM has no public IP. Azure Bastion provides RDP access. It has Internet access and private HTTPS access to the agent. The Container Apps Environment has an internal load balancer; the HR Copilot's ingress is reachable only from the VNet. The deployment creates and links the required private DNS zone automatically.
 
 ## Deploy
 
@@ -25,7 +25,7 @@ This script is run **once by the lab owner/administrator**, not by each SE. Foll
 
 The script uses the active subscription selected by `az login` / `az account set`. It prompts separately for the Ubuntu password and OpenAI API key, then generates a Lab Token. None is committed to the repository. Each SE only needs the Bastion access details and the separately delivered assessment exercise.
 
-After deployment, grant Bastion access to the SEs. They connect to the VM in Azure Portal and follow the separately delivered assessment exercise. They do not run `deploy.ps1`.
+After deployment, grant Bastion access to the SEs. They follow [the Security Engineer access guide](docs/01-security-engineer-access.md) and then the separately delivered assessment exercise. They do not run `deploy.ps1`.
 
 ## Intentional vulnerabilities
 
