@@ -255,8 +255,10 @@ Invoke-Az -AzArguments @(
 
 Write-Host ''
 Write-Host 'Deployment complete.' -ForegroundColor Green
-Write-Host "Bastion: $($core.bastionName.value)"
-Write-Host "VM:      $($core.vmName.value)"
-Write-Host "Agent:   https://$($workload.agentFqdn.value)/api/chat (private; reachable only from the VNet)"
-Write-Host "Token:   saved as Key Vault secret '$keyVaultName/lab-token'"
+Write-Host "Bastion:       $($core.bastionName.value)"
+Write-Host "VM:            $($core.vmName.value)"
+Write-Host "Key Vault:     $keyVaultName"
+Write-Host "Token secret:  lab-token"
+Write-Host "Agent endpoint: https://$($workload.agentFqdn.value)/api/chat"
+Write-Host 'Agent access:  private; reachable only from the VNet'
 Write-Host 'Next: connect to the VM through Azure Bastion and follow docs/02-lakera-red-sdk-training.md.'
